@@ -18,7 +18,9 @@
             [nextjournal.clerk.classpath :as cp]
             [nextjournal.clerk.config :as config]
             [taoensso.nippy :as nippy]
-            [weavejester.dependency :as dep]))
+            [weavejester.dependency :as dep])
+  (:import [java.io File]
+           [java.net URL URLDecoder URLEncoder]))
 
 (set! *warn-on-reflection* true)
 
@@ -419,6 +421,14 @@
 (defn guard [x f]
   (when (f x) x))
 
+(defn url->file-path
+  "Adapted from clojure.java.io/escaped-utf8-urlstring->str"
+  [^URL url]
+  (-> (.getFile url)
+      (.replace \/ File/separatorChar)
+      (str/replace "+" (URLEncoder/encode "+" "UTF-8"))
+      (URLDecoder/decode "UTF-8")))
+
 (defn symbol->jar [sym]
   (some-> (if (qualified-symbol? sym)
             (-> sym namespace symbol)
@@ -427,8 +437,8 @@
           .getProtectionDomain
           .getCodeSource
           .getLocation
-          ^java.net.URL (guard #(= "file" (.getProtocol ^java.net.URL %)))
-          .getFile
+          ^URL (guard #(= "file" (.getProtocol ^URL %)))
+          url->file-path
           (guard #(str/ends-with? % ".jar"))
           normalize-filename))
 
